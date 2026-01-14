@@ -6,6 +6,13 @@ on:
     paths:
       - 'whoop_app/**'
       - '.github/workflows/deploy-frontend-vercel.yml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy even if no changes'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   deploy:

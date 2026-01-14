@@ -7,6 +7,13 @@ on:
       - 'backend/**'
       - 'render.yaml'
       - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy even if no changes'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   deploy:
