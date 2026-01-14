@@ -1,0 +1,28 @@
+name: Setup Supabase Database
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/src/infra/data-source.ts'
+      - '.github/workflows/setup-database.yml'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Run migrations (if needed)
+        run: |
+          echo "Database migrations will be handled by Supabase"
+          echo "Connection string: ${{ secrets.SUPABASE_DB_URL }}"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

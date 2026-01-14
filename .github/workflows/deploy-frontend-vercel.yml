@@ -1,0 +1,45 @@
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'whoop_app/**'
+      - '.github/workflows/deploy-frontend-vercel.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: |
+          cd whoop_app
+          flutter pub get
+      
+      - name: Build web
+        run: |
+          cd whoop_app
+          flutter build web --release --base-href / --web-renderer canvaskit --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./whoop_app
