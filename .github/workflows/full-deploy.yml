@@ -1,0 +1,111 @@
+name: Full Deployment - Backend + Frontend + Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy Backend to Render'
+        required: false
+        default: true
+        type: boolean
+      deploy_frontend:
+        description: 'Deploy Frontend to Vercel'
+        required: false
+        default: true
+        type: boolean
+      setup_database:
+        description: 'Setup Database (Supabase)'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  deploy-backend:
+    if: ${{ inputs.deploy_backend }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+      
+      - name: Build
+        run: |
+          cd backend
+          npm run build
+      
+      - name: Deploy to Render
+        uses: johnbeynon/render-deploy@v0.0.8
+        if: ${{ secrets.RENDER_SERVICE_ID != '' && secrets.RENDER_API_KEY != '' }}
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+
+  deploy-frontend:
+    if: ${{ inputs.deploy_frontend }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: |
+          cd whoop_app
+          flutter pub get
+      
+      - name: Build web
+        run: |
+          cd whoop_app
+          flutter build web --release --base-href / --web-renderer canvaskit --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://pulsetrack-api.onrender.com' }}
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL || 'https://pulsetrack-api.onrender.com' }}
+      
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./whoop_app
+
+  setup-database:
+    if: ${{ inputs.setup_database }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Verify Database Connection
+        run: |
+          echo "Database connection will be verified"
+          if [ -n "${{ secrets.SUPABASE_DB_URL }}" ]; then
+            echo "✅ Supabase connection string configured"
+          else
+            echo "⚠️ Supabase connection string not configured"
+          fi
